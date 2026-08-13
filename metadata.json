@@ -1,0 +1,6 @@
+{
+  "name": "Protokoll 0",
+  "description": "Digitales Bewusstseins-Tagebuch, Dokumenten-Vault, Sprachaufnahmen und In-App Browser im dunklen Neon/Rot/Lila Design.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
