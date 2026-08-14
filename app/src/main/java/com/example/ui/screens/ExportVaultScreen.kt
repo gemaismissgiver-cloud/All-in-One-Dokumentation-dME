@@ -25,11 +25,13 @@ import com.example.data.model.ProtocolChapter
 import com.example.data.model.ProtocolEntry
 import com.example.ui.theme.*
 import com.example.util.ExportShareManager
+import com.example.util.ProjectPackager
 import java.util.Locale
 
 @Composable
 fun ExportVaultScreen(
     entries: List<ProtocolEntry>,
+    onNavigateToCodeBlueprint: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -49,17 +51,81 @@ fun ExportVaultScreen(
         modifier = modifier
             .fillMaxSize()
             .background(DarkBackground)
-            .padding(16.dp)
+            .padding(14.dp)
             .testTag("export_vault_screen")
     ) {
+        // Code & APK Blueprint Quick Access Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, ChapterErkennenColor)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Terminal, contentDescription = null, tint = ChapterErkennenColor, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "APP-BAUPLAN & QUELLCODE",
+                            color = PureWhite,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    TextButton(onClick = onNavigateToCodeBlueprint) {
+                        Text("Code ansehen →", color = ChapterErkennenColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Text(
+                    text = "Lade alle Quellcodes herunter oder exportiere die echte APK für SD-Karte / Gmail / Files App.",
+                    color = TextMuted,
+                    fontSize = 10.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { ProjectPackager.exportAndShareProjectZip(context) },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonRedPrimary),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.FolderZip, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Projekt .ZIP", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = { ProjectPackager.exportAndShareInstalledApk(context) },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CyberPurple),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Android, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Echte .APK", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
         // Vault Header
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(14.dp),
             border = BorderStroke(1.dp, CyberPurple)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -70,88 +136,88 @@ fun ExportVaultScreen(
                             imageVector = Icons.Default.Public,
                             contentDescription = null,
                             tint = NeonRedPrimary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = "ÖFFENTLICHER DOKUMENTEN-VAULT",
+                                text = "TAGEBUCH-DATEN EXPORTIEREN",
                                 color = PureWhite,
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
                             )
                             Text(
-                                text = "Protokolle, Dokumente & Formate frei teilen",
+                                text = "Einträge als JSON, TXT, Markdown oder HTML sichern",
                                 color = TextMuted,
-                                fontSize = 11.sp
+                                fontSize = 10.sp
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "${entries.size}", color = PureWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "Protokolle", color = TextMuted, fontSize = 11.sp)
+                        Text(text = "${entries.size}", color = PureWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "Protokolle", color = TextMuted, fontSize = 10.sp)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = String.format(Locale.US, "%.0f%%", avgCoherence * 100),
                             color = ChapterErkennenColor,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(text = "Ø Kohärenz", color = TextMuted, fontSize = 11.sp)
+                        Text(text = "Ø 0-Kohärenz", color = TextMuted, fontSize = 10.sp)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "4", color = ChapterDenkenColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "Formate (JSON/TXT/MD/HTML)", color = TextMuted, fontSize = 11.sp)
+                        Text(text = "4", color = ChapterDenkenColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "Formate", color = TextMuted, fontSize = 10.sp)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Export Configuration Box
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(12.dp),
             border = BorderStroke(0.5.dp, DarkCardBorder)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = "1. EXPORT-FORMAT WÄHLEN",
+                    text = "EXPORT-FORMAT WÄHLEN",
                     color = ElectricViolet,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     ExportShareManager.ExportFormat.values().forEach { format ->
                         val isSel = format == selectedFormat
                         Surface(
                             onClick = { selectedFormat = format },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = if (isSel) NeonRedPrimary else DarkSurfaceVariant,
                             border = BorderStroke(0.5.dp, if (isSel) NeonRedPrimary else DarkCardBorder)
                         ) {
                             Box(
-                                modifier = Modifier.padding(vertical = 10.dp),
+                                modifier = Modifier.padding(vertical = 8.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -165,7 +231,7 @@ fun ExportVaultScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Button(
                     onClick = {
@@ -173,38 +239,38 @@ fun ExportVaultScreen(
                             context,
                             filteredEntries,
                             selectedFormat,
-                            "Protokoll_0_Oeffentlich"
+                            "Protokoll_0_Tagebuch_Export"
                         )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .height(44.dp)
                         .testTag("export_document_button"),
                     colors = ButtonDefaults.buttonColors(containerColor = NeonRedPrimary),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.IosShare, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(imageVector = Icons.Default.IosShare, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "DOKUMENT VERÖFFENTLICHEN & TEILEN (${filteredEntries.size} Einträge)",
+                        text = "TAGEBUCH SPEICHERN / TEILEN (${filteredEntries.size} Einträge)",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        fontSize = 11.sp
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            text = "ÜBERSICHT DEINER ENTITY-PROTOKOLLE",
+            text = "ÜBERSICHT DEINER EINTRÄGE",
             color = TextMuted,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         if (filteredEntries.isEmpty()) {
             Box(
@@ -213,42 +279,44 @@ fun ExportVaultScreen(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Keine Protokolle vorhanden. Erstelle deinen ersten Eintrag!", color = TextMuted)
+                Text("Keine Protokolle vorhanden. Erstelle deinen ersten Eintrag!", color = TextMuted, fontSize = 12.sp)
             }
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(filteredEntries) { entry ->
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = DarkSurface,
                         border = BorderStroke(0.5.dp, DarkCardBorder)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp),
+                                .padding(10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = entry.title, color = PureWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text(text = entry.title, color = PureWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     text = "Kapitel: ${entry.chapter} | Datum: ${entry.dateStr}",
                                     color = TextMuted,
-                                    fontSize = 11.sp
+                                    fontSize = 10.sp
                                 )
                             }
 
                             IconButton(
-                                onClick = { ExportShareManager.shareEntryText(context, entry) }
+                                onClick = { ExportShareManager.shareEntryText(context, entry) },
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Share,
                                     contentDescription = "Einzeleintrag Teilen",
-                                    tint = ElectricViolet
+                                    tint = ElectricViolet,
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -258,3 +326,4 @@ fun ExportVaultScreen(
         }
     }
 }
+

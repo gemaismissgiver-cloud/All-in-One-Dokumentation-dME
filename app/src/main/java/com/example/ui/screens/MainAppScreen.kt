@@ -3,9 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -23,7 +21,8 @@ import com.example.ui.viewmodel.ProtocolViewModel
 enum class MainTab(val title: String) {
     PROTOKOLLE("Protokolle"),
     BROWSER("Internet Browser"),
-    VAULT("Öffentlich & Export")
+    VAULT("Export Vault"),
+    CODE_BLUEPRINT("Code & APK")
 }
 
 @Composable
@@ -56,14 +55,15 @@ fun MainAppScreen(
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Book,
-                            contentDescription = "Protokolle"
+                            contentDescription = "Tagebuch",
+                            modifier = Modifier.size(24.dp)
                         )
                     },
                     label = {
                         Text(
-                            text = "Protokolle",
-                            fontSize = 11.sp,
-                            fontWeight = if (selectedTab == MainTab.PROTOKOLLE) FontWeight.Bold else FontWeight.Normal
+                            text = "Tagebuch",
+                            fontSize = 12.sp,
+                            fontWeight = if (selectedTab == MainTab.PROTOKOLLE) FontWeight.Bold else FontWeight.Medium
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
@@ -81,14 +81,15 @@ fun MainAppScreen(
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Language,
-                            contentDescription = "Browser"
+                            contentDescription = "Browser",
+                            modifier = Modifier.size(24.dp)
                         )
                     },
                     label = {
                         Text(
                             text = "Browser",
-                            fontSize = 11.sp,
-                            fontWeight = if (selectedTab == MainTab.BROWSER) FontWeight.Bold else FontWeight.Normal
+                            fontSize = 12.sp,
+                            fontWeight = if (selectedTab == MainTab.BROWSER) FontWeight.Bold else FontWeight.Medium
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
@@ -106,20 +107,47 @@ fun MainAppScreen(
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Public,
-                            contentDescription = "Öffentlich & Export"
+                            contentDescription = "Export Vault",
+                            modifier = Modifier.size(24.dp)
                         )
                     },
                     label = {
                         Text(
-                            text = "Export Vault",
-                            fontSize = 11.sp,
-                            fontWeight = if (selectedTab == MainTab.VAULT) FontWeight.Bold else FontWeight.Normal
+                            text = "Export",
+                            fontSize = 12.sp,
+                            fontWeight = if (selectedTab == MainTab.VAULT) FontWeight.Bold else FontWeight.Medium
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = PureWhite,
                         selectedTextColor = PureWhite,
                         indicatorColor = ElectricViolet,
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted
+                    )
+                )
+
+                NavigationBarItem(
+                    selected = selectedTab == MainTab.CODE_BLUEPRINT,
+                    onClick = { selectedTab = MainTab.CODE_BLUEPRINT },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Android,
+                            contentDescription = "Code & APK",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = "Code & APK",
+                            fontSize = 12.sp,
+                            fontWeight = if (selectedTab == MainTab.CODE_BLUEPRINT) FontWeight.Bold else FontWeight.Medium
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = PureWhite,
+                        selectedTextColor = PureWhite,
+                        indicatorColor = ChapterErkennenColor,
                         unselectedIconColor = TextMuted,
                         unselectedTextColor = TextMuted
                     )
@@ -165,7 +193,16 @@ fun MainAppScreen(
                 }
 
                 MainTab.VAULT -> {
-                    ExportVaultScreen(entries = entries)
+                    ExportVaultScreen(
+                        entries = entries,
+                        onNavigateToCodeBlueprint = {
+                            selectedTab = MainTab.CODE_BLUEPRINT
+                        }
+                    )
+                }
+
+                MainTab.CODE_BLUEPRINT -> {
+                    CodeBlueprintScreen(entries = entries)
                 }
             }
         }
