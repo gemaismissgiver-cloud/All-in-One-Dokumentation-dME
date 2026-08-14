@@ -29,17 +29,17 @@ app_path=$0
 
 # Need this for relative symlinks.
 while [ -h "$app_path" ] ; do
-    ls=`ls -ld "$app_path"`
-    link=`expr "$ls" : '.*-> \(.*\)$'`
+    ls=$(ls -ld "$app_path")
+    link=$(expr "$ls" : '.*-> \(.*\)$')
     if expr "$link" : '/.*' > /dev/null; then
         app_path="$link"
     else
-        app_path=`dirname "$app_path"`"/$link"
+        app_path=$(dirname "$app_path")/"$link"
     fi
 done
 
-APP_BASE_NAME=`basename "$0"`
-APP_HOME=`cd "\`dirname "$app_path"\`" >/dev/null 2>&1 && pwd`
+APP_BASE_NAME=$(basename "$0")
+APP_HOME=$(cd "$(dirname "$app_path")" >/dev/null 2>&1 && pwd)
 
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
@@ -107,7 +107,7 @@ fi
 if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$nonstop" = "false" ] ; then
     case $MAX_FD in
       max*)
-        MAX_FD=`ulimit -H -n`
+        MAX_FD=$(ulimit -H -n)
         ;;
     esac
     case $MAX_FD in
@@ -122,7 +122,7 @@ fi
 # Collect all arguments for the java sub-shell.
 CMD_LINE_ARGS=
 for arg in "$@" ; do
-    CHECK=`echo "$arg"|egrep -c "( |\"|\$|'|\\\|\`|\\(|\\)|\\<|\\>|\\&|\\;|\\#)"`
+    CHECK=$(echo "$arg"|egrep -c "( |\"|\\$|'|\\\\|\\(|\\)|\\<|\\>|\\&|\\;|\\#)")
     if [ "$CHECK" -ne 0 ] ; then
         CMD_LINE_ARGS="$CMD_LINE_ARGS \"$arg\""
     else
