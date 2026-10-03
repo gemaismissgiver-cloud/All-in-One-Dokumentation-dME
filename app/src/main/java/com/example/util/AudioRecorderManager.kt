@@ -1,94 +1,96 @@
 package com.example.util
 
 import android.content.Context
-import android.media.MediaRecorder
-import android.os.Build
-import android.util.Log
+import com.example.util.audio.AndroidAudioRecorder
+import com.example.util.audio.AudioRecordItem
+import com.example.util.audio.AudioRecorder
+import com.example.util.audio.AudioRecorderConfig
+import com.example.util.audio.AudioRecordingState
+import com.example.util.audio.AudioStorageManager
+import kotlinx.coroutines.flow.StateFlow
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-class AudioRecorderManager(private val context: Context) {
-    private var mediaRecorder: MediaRecorder? = null
-    var currentOutputFile: File? = null
-        private set
-    var isRecording: Boolean = false
-        private set
-    private var startTimeMs: Long = 0
+/**
+ * High-level manager and adapter for audio recording operations.
+ * Manages media recording lifecycles, amplitude monitoring, and internal app file storage.
+ */
+class AudioRecorderManager(
+    private val context: Context,
+    config: AudioRecorderConfig = AudioRecorderConfig()
+) {
+    val storageManager: AudioStorageManager = AudioStorageManager(context)
+    val recorder: AudioRecorder = AndroidAudioRecorder(context, config, storageManager)
 
-    fun startRecording(): Boolean {
-        try {
-            val audioDir = File(context.filesDir, "audio_protocols")
-            if (!audioDir.exists()) {
-                audioDir.mkdirs()
-            }
+    val state: StateFlow<AudioRecordingState> = recorder.state
+    val amplitude: StateFlow<Int> = recorder.amplitude
+    val durationMs: StateFlow<Long> = recorder.durationMs
 
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val file = File(audioDir, "PROTOCOL_REC_$timestamp.m4a")
-            currentOutputFile = file
-
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
-            }.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128000)
-                setAudioSamplingRate(44100)
-                setOutputFile(file.absolutePath)
-                prepare()
-                start()
-            }
-
-            isRecording = true
-            startTimeMs = System.currentTimeMillis()
-            return true
-        } catch (e: Exception) {
-            Log.e("AudioRecorder", "Error starting recording", e)
-            mediaRecorder?.release()
-            mediaRecorder = null
-            isRecording = false
-            currentOutputFile = null
-            return false
+    val currentOutputFile: File?
+        get() = when (val s = recorder.state.value) {
+            is AudioRecordingState.Recording -> s.file
+            is AudioRecordingState.Paused -> s.file
+            is AudioRecordingState.Stopped -> s.file
+            else -> null
         }
+
+    val isRecording: Boolean
+        get() = recorder.state.value is AudioRecordingState.Recording || recorder.state.value is AudioRecordingState.Paused
+
+    /**
+     * Starts recording to a new file in app storage.
+     * @return true if recording successfully started.
+     */
+    fun startRecording(prefix: String = "PROTOCOL_REC"): Boolean {
+        val file = storageManager.createOutputFile(prefix = prefix, subdir = "audio_protocols")
+        val result = recorder.start(file)
+        return result.isSuccess
     }
 
+    /**
+     * Pauses the active recording.
+     */
+    fun pauseRecording(): Boolean {
+        return recorder.pause()
+    }
+
+    /**
+     * Resumes the paused recording.
+     */
+    fun resumeRecording(): Boolean {
+        return recorder.resume()
+    }
+
+    /**
+     * Stops the active recording and returns the saved file and recorded duration in milliseconds.
+     */
     fun stopRecording(): Pair<File?, Long> {
-        if (!isRecording) return Pair(null, 0L)
-
-        val duration = System.currentTimeMillis() - startTimeMs
-        val file = currentOutputFile
-
-        try {
-            mediaRecorder?.stop()
-        } catch (e: Exception) {
-            Log.e("AudioRecorder", "Error stopping recorder", e)
-        } finally {
-            mediaRecorder?.release()
-            mediaRecorder = null
-            isRecording = false
+        val result = recorder.stop()
+        return if (result.isSuccess) {
+            val item: AudioRecordItem = result.getOrThrow()
+            Pair(item.file, item.durationMs)
+        } else {
+            Pair(null, 0L)
         }
-
-        return Pair(file, duration)
     }
 
+    /**
+     * Cancels the active recording and deletes the partially recorded file.
+     */
     fun cancelRecording() {
-        try {
-            if (isRecording) {
-                mediaRecorder?.stop()
-            }
-        } catch (e: Exception) {
-            Log.e("AudioRecorder", "Error canceling recording", e)
-        } finally {
-            mediaRecorder?.release()
-            mediaRecorder = null
-            isRecording = false
-            currentOutputFile?.delete()
-            currentOutputFile = null
-        }
+        recorder.cancel()
+    }
+
+    /**
+     * Lists all recordings stored in the app storage.
+     */
+    fun listStoredRecordings(): List<AudioRecordItem> {
+        return storageManager.listRecordings(subdir = "audio_protocols")
+    }
+
+    /**
+     * Deletes a recording from storage.
+     */
+    fun deleteRecording(file: File?): Boolean {
+        return storageManager.deleteRecording(file)
     }
 }

@@ -34,9 +34,13 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.example.data.model.ProtocolChapter
 import com.example.data.model.ProtocolEntry
+import com.example.ui.components.AudioRecordingBar
+import com.example.ui.components.NexusKiSettingsDialog
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ProtocolViewModel
 import com.example.util.ZeroLogikAnalyzer
+import com.example.util.ai.OpenRouterClient
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Locale
 
@@ -81,9 +85,19 @@ fun EntryEditorDialog(
 
     // Audio recording state
     var isRecordingAudio by remember { mutableStateOf(false) }
+    val isAudioPlaying by viewModel.audioPlayer.isPlaying.collectAsState()
+    val playingPath by viewModel.audioPlayer.currentPath.collectAsState()
+    val isThisAudioPlaying = isAudioPlaying && playingPath == audioPath
 
     // Real-time 0-Logik Analysis
     val logikResult = remember(content) { ZeroLogikAnalyzer.analyze(content) }
+
+    // Nexus OpenRouter AI State
+    val openRouterClient = remember { OpenRouterClient(context) }
+    val scope = rememberCoroutineScope()
+    var nexusReflection by remember { mutableStateOf<String?>(null) }
+    var isAnalyzingWithNexus by remember { mutableStateOf(false) }
+    var showNexusSettingsDialog by remember { mutableStateOf(false) }
 
     // Audio permission launcher
     val audioPermissionLauncher = rememberLauncherForActivityResult(
@@ -161,11 +175,13 @@ fun EntryEditorDialog(
 
                     Button(
                         onClick = {
-                            if (isRecordingAudio) {
+                            if (viewModel.audioRecorder.isRecording) {
                                 val (file, duration) = viewModel.audioRecorder.stopRecording()
                                 isRecordingAudio = false
-                                audioPath = file?.absolutePath
-                                audioDurationMs = duration
+                                if (file != null) {
+                                    audioPath = file.absolutePath
+                                    audioDurationMs = duration
+                                }
                             }
                             onSave(
                                 title,
@@ -303,113 +319,112 @@ fun EntryEditorDialog(
 
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Audio Recording Button
-                                Button(
-                                    onClick = {
-                                        if (isRecordingAudio) {
-                                            val (file, duration) = viewModel.audioRecorder.stopRecording()
-                                            isRecordingAudio = false
-                                            audioPath = file?.absolutePath
-                                            audioDurationMs = duration
-                                        } else {
-                                            val permissionCheck = ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.RECORD_AUDIO
-                                            )
-                                            if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                                                val started = viewModel.audioRecorder.startRecording()
-                                                if (started) isRecordingAudio = true
-                                            } else {
-                                                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            // Audio Recording Section: AudioRecordingBar or Attached Audio Preview
+                            if (audioPath == null) {
+                                AudioRecordingBar(
+                                    audioRecorder = viewModel.audioRecorder,
+                                    onRecordingSaved = { file, duration ->
+                                        audioPath = file.absolutePath
+                                        audioDurationMs = duration
+                                    },
+                                    onRecordingCancelled = {
+                                        audioPath = null
+                                        audioDurationMs = 0L
+                                    }
+                                )
+                            } else {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = DarkSurfaceVariant,
+                                    border = BorderStroke(1.dp, CyberPurple)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    audioPath?.let { path ->
+                                                        viewModel.audioPlayer.playOrPause(path)
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(CircleShape)
+                                                    .background(CyberPurple)
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (isThisAudioPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                    contentDescription = "Sprachnachricht abspielen",
+                                                    tint = PureWhite
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Column {
+                                                Text(
+                                                    text = "Sprachaufnahme angehängt",
+                                                    color = OffWhite,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    text = viewModel.audioRecorder.storageManager.formatDuration(audioDurationMs),
+                                                    color = TextMuted,
+                                                    fontSize = 11.sp,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
                                             }
                                         }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isRecordingAudio) NeonRedPrimary else CyberPurple
-                                    ),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("record_audio_button")
-                                ) {
-                                    Icon(
-                                        imageVector = if (isRecordingAudio) Icons.Default.Stop else Icons.Default.Mic,
-                                        contentDescription = "Sprachnachricht Aufnehmen",
-                                        tint = PureWhite,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (isRecordingAudio) "STopp..." else "Sprache",
-                                        fontSize = 11.sp
-                                    )
-                                }
 
-                                // Upload Document / Text File
-                                Button(
-                                    onClick = { documentPickerLauncher.launch("*/*") },
-                                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(0.5.dp, ChapterErfindenColor),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("upload_file_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.UploadFile,
-                                        contentDescription = "Datei Hochladen",
-                                        tint = ChapterErfindenColor,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Datei", color = OffWhite, fontSize = 11.sp)
+                                        IconButton(
+                                            onClick = {
+                                                if (isThisAudioPlaying) {
+                                                    viewModel.audioPlayer.stop()
+                                                }
+                                                audioPath = null
+                                                audioDurationMs = 0L
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Sprachaufnahme löschen",
+                                                tint = NeonRedPrimary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
-                            // Attached voice indicator
-                            if (audioPath != null || isRecordingAudio) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(DarkSurfaceVariant)
-                                        .padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.GraphicEq,
-                                            contentDescription = null,
-                                            tint = NeonRedPrimary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (isRecordingAudio) "Aufnahme läuft..." else "Sprachnachricht angehängt",
-                                            color = OffWhite,
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                    if (audioPath != null && !isRecordingAudio) {
-                                        IconButton(
-                                            onClick = { audioPath = null; audioDurationMs = 0L },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Close,
-                                                contentDescription = "Entfernen",
-                                                tint = NeonRedPrimary,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-                                    }
-                                }
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Upload Document / Text File
+                            Button(
+                                onClick = { documentPickerLauncher.launch("*/*") },
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(0.5.dp, ChapterErfindenColor),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("upload_file_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.UploadFile,
+                                    contentDescription = "Datei Hochladen",
+                                    tint = ChapterErfindenColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Datei / Notiz anhängen (*.txt, *.md, *.json)", color = OffWhite, fontSize = 11.sp)
                             }
 
                             // Attached Document Indicator
@@ -540,10 +555,124 @@ fun EntryEditorDialog(
                                 Text(text = "Zeichen: ${logikResult.characterCount}", color = TextMuted, fontSize = 10.sp)
                                 Text(text = "Ego-Impulse: ${logikResult.egoWordsCount}", color = TextMuted, fontSize = 10.sp)
                             }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Nexus OpenRouter AI Action Button
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (!openRouterClient.isConfigured) {
+                                            showNexusSettingsDialog = true
+                                        } else {
+                                            isAnalyzingWithNexus = true
+                                            scope.launch {
+                                                val promptText = "Titel: $title\nKapitel: ${selectedChapter.title}\nText: $content"
+                                                val result = openRouterClient.analyzeWithZeroLogik(promptText)
+                                                isAnalyzingWithNexus = false
+                                                nexusReflection = if (result.isSuccess) {
+                                                    result.getOrNull()
+                                                } else {
+                                                    "Fehler: ${result.exceptionOrNull()?.message}"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CyberPurple),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    if (isAnalyzingWithNexus) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = PureWhite
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Berechne...", fontSize = 11.sp)
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Psychology,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = PureWhite
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("NEXUS 0-KI REFLEKTION", color = PureWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                IconButton(
+                                    onClick = { showNexusSettingsDialog = true },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Nexus KI Einstellungen",
+                                        tint = TextMuted
+                                    )
+                                }
+                            }
+
+                            // Nexus Reflection Result Display
+                            if (nexusReflection != null) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = DarkBackground,
+                                    border = BorderStroke(1.dp, NeonRedPrimary.copy(alpha = 0.6f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "NEXUS REFLEKTION (${openRouterClient.selectedModel}):",
+                                                color = NeonRedPrimary,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                            IconButton(
+                                                onClick = { nexusReflection = null },
+                                                modifier = Modifier.size(20.dp)
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = "Schließen", tint = TextMuted, modifier = Modifier.size(14.dp))
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = nexusReflection ?: "",
+                                            color = OffWhite,
+                                            fontSize = 11.sp,
+                                            lineHeight = 15.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        TextButton(
+                                            onClick = {
+                                                content += "\n\n--- NEXUS 0-KI REFLEKTION ---\n${nexusReflection ?: ""}"
+                                                nexusReflection = null
+                                            },
+                                            modifier = Modifier.align(Alignment.End)
+                                        ) {
+                                            Text("In Notiz einfügen", color = ChapterErkennenColor, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        if (showNexusSettingsDialog) {
+            NexusKiSettingsDialog(onDismiss = { showNexusSettingsDialog = false })
         }
     }
 }

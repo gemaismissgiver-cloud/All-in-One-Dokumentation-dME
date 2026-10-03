@@ -37,6 +37,7 @@ fun ZeroMatrixHeader(
     modifier: Modifier = Modifier
 ) {
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showNexusKiDialog by remember { mutableStateOf(false) }
     val dateStr = remember {
         SimpleDateFormat("EEEE, d. MMMM yyyy", Locale.GERMAN).format(Date())
     }
@@ -103,15 +104,28 @@ fun ZeroMatrixHeader(
                     }
                 }
 
-                IconButton(
-                    onClick = { showInfoDialog = true },
-                    modifier = Modifier.testTag("info_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "0-Logik Info",
-                        tint = ElectricViolet
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { showNexusKiDialog = true },
+                        modifier = Modifier.testTag("nexus_ki_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Psychology,
+                            contentDescription = "Nexus 0-KI (OpenRouter)",
+                            tint = NeonRedPrimary
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { showInfoDialog = true },
+                        modifier = Modifier.testTag("info_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "0-Logik Info",
+                            tint = ElectricViolet
+                        )
+                    }
                 }
             }
 
@@ -223,5 +237,9 @@ fun ZeroMatrixHeader(
             containerColor = DarkSurface,
             shape = RoundedCornerShape(16.dp)
         )
+    }
+
+    if (showNexusKiDialog) {
+        NexusKiSettingsDialog(onDismiss = { showNexusKiDialog = false })
     }
 }
