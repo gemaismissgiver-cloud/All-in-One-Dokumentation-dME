@@ -36,6 +36,7 @@ import com.example.data.model.ProtocolChapter
 import com.example.data.model.ProtocolEntry
 import com.example.ui.components.AudioRecordingBar
 import com.example.ui.components.NexusKiSettingsDialog
+import com.example.ui.components.SimpleVoiceRecordButton
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ProtocolViewModel
 import com.example.util.ZeroLogikAnalyzer
@@ -300,6 +301,20 @@ fun EntryEditorDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("entry_content_input")
+                    )
+
+                    // Quick Speech-to-Text & Audio Capture Component
+                    SimpleVoiceRecordButton(
+                        audioRecorder = viewModel.audioRecorder,
+                        enableSpeechToText = true,
+                        onAudioRecorded = { file, duration ->
+                            audioPath = file.absolutePath
+                            audioDurationMs = duration
+                        },
+                        onSpeechTranscribed = { transcribedText ->
+                            content = if (content.isBlank()) transcribedText else "$content $transcribedText"
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     // Attachments Bar: Audio Recording, Document Upload
