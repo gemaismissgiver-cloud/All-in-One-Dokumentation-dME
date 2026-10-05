@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "**" ]
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
@@ -12,36 +12,51 @@ permissions:
 
 jobs:
   build:
+    name: Android APK bauen
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: JDK 21 einrichten
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant Execute Permission to Gradlew
+      - name: Ausfuehrungsrechte fuer gradlew erteilen
         run: chmod +x gradlew
 
-      - name: Build Debug APK with Gradle
+      - name: Build-Umgebung und Keystore vorbereiten
+        run: |
+          touch .env
+          if [ -f debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+            echo "debug.keystore erfolgreich aus base64 dekodiert."
+          fi
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            echo "Fallback debug.keystore generiert."
+          fi
+
+      - name: Build Debug APK mit Gradle
+        id: build_apk
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload Debug APK Artifact
+      - name: Debug-APK-Artefakt hochladen
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Protokoll_Null_Tagebuch_APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Create or Update GitHub Release with APK
-        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      - name: GitHub-Release mit APK erstellen oder aktualisieren
+        if: success()
         uses: softprops/action-gh-release@v2
         continue-on-error: true
         with:
@@ -52,7 +67,7 @@ jobs:
             Automatisch gebaut via GitHub Actions.
             
             **Installation auf dem Motorola 13 / Android:**
-            1. Lade `app-debug.apk` direkt auf dein Smartphone herunter.
-            2. Öffne die Datei mit dem Paket-Installer (ggf. "Unbekannte Apps installieren" erlauben).
-            3. Google Play Protect Verifizierung bestätigen und App starten.
+            1. Lade `app-debug.apk` direkt auf dein Motorola 13 herunter.
+            2. Öffne die Datei mit dem Paket-Installer (ggf. „Unbekannte Apps installieren“ für den Browser / Datei-Manager erlauben).
+            3. Google Play Protect Warnung mit „Trotzdem installieren“ bestätigen und App starten.
           files: app/build/outputs/apk/debug/app-debug.apk
